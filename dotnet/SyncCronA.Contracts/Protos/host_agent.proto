@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+option csharp_namespace = "SyncCronA.Contracts.HostAgents";
+package synccrona.hostagents.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service HostAgentControlPlane {
+  rpc Connect(stream AgentMessage) returns (stream ControlPlaneMessage);
+}
+
+message AgentMessage {
+  oneof payload {
+    RegisterHostAgent registration = 1;
+    HostAgentHeartbeat heartbeat = 2;
+    HostCommandResult command_result = 3;
+  }
+}
+
+message RegisterHostAgent {
+  uint32 protocol_version = 1;
+  string agent_key = 2;
+  string name = 3;
+  string version = 4;
+  string host_name = 5;
+  string operating_system = 6;
+  string architecture = 7;
+  string workspace_id = 8;
+  repeated string capabilities = 9;
+}
+
+message HostAgentHeartbeat {
+  uint32 protocol_version = 1;
+  google.protobuf.Timestamp sent_at = 2;
+  string agent_id = 3;
+  string workspace_id = 4;
+  string session_id = 5;
+  repeated string capabilities = 6;
+}
+
+message HostCommandResult {
+  uint32 protocol_version = 1;
+  string command_id = 2;
+  string execution_id = 3;
+  string attempt_id = 4;
+  string agent_id = 5;
+  string workspace_id = 6;
+  string session_id = 7;
+  CommandResultStatus status = 8;
+  google.protobuf.Timestamp completed_at = 9;
+  string result_json = 10;
+  string error = 11;
+}
+
+message ControlPlaneMessage {
+  oneof payload {
+    HostAgentRegistered registered = 1;
+    HostCommand command = 2;
+  }
+}
+
+message HostAgentRegistered {
+  uint32 protocol_version = 1;
+  string agent_id = 2;
+  string workspace_id = 3;
+  string session_id = 4;
+  reserved 5;
+  reserved 6;
+  reserved 7;
+  google.protobuf.Timestamp server_time = 8;
+  int32 offline_after_seconds = 9;
+}
+
+message HostCommand {
+  uint32 protocol_version = 1;
+  string command_id = 2;
+  string execution_id = 3;
+  string attempt_id = 4;
+  string agent_id = 5;
+  string workspace_id = 6;
+  string capability = 7;
+  string type = 8;
+  string payload_json = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp expires_at = 11;
+  reserved 12;
+  reserved 13;
+  string session_id = 14;
+}
+
+enum CommandResultStatus {
+  COMMAND_RESULT_STATUS_UNSPECIFIED = 0;
+  COMMAND_RESULT_STATUS_SUCCEEDED = 1;
+  COMMAND_RESULT_STATUS_FAILED = 2;
+}
