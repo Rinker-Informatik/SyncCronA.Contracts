@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+option csharp_namespace = "SyncCronA.Contracts.ApplicationAgents";
+package synccrona.applicationagents.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service ApplicationAgentControlPlane {
+  rpc Connect(stream ApplicationAgentMessage) returns (stream ApplicationControlPlaneMessage);
+}
+
+message ApplicationAgentMessage {
+  oneof payload {
+    RegisterApplicationAgent registration = 1;
+    ApplicationAgentHeartbeat heartbeat = 2;
+    ExecutionReport report = 3;
+  }
+}
+
+message RegisterApplicationAgent {
+  uint32 protocol_version = 1;
+  string agent_key = 2;
+  string name = 3;
+  string application_instance_id = 5;
+  string version = 6;
+  repeated string capabilities = 7;
+  repeated HandlerRegistration handlers = 8;
+  string environment = 9;
+  string application_name = 10;
+  reserved 4;
+}
+
+message ApplicationAgentHeartbeat {
+  uint32 protocol_version = 1;
+  string agent_id = 2;
+  string session_id = 4;
+  google.protobuf.Timestamp sent_at = 5;
+  repeated string capabilities = 6;
+  reserved 3;
+}
+
+message ApplicationControlPlaneMessage {
+  oneof payload {
+    ApplicationAgentRegistered registered = 1;
+    ExecuteHandler execute = 2;
+    ExecutionReportAcknowledged acknowledged = 3;
+    CancelHandler cancel = 4;
+  }
+}
+
+message ApplicationAgentRegistered {
+  uint32 protocol_version = 1;
+  string agent_id = 2;
+  string session_id = 4;
+  reserved 3;
+  reserved 5;
+  reserved 6;
+}
+
+message HandlerRegistration { string name = 1; }
+message ExecuteHandler {
+  string execution_id = 1;
+  string handler_name = 2;
+}
+message CancelHandler { string execution_id = 1; }
+enum HandlerExecutionState {
+  HANDLER_EXECUTION_STATE_UNSPECIFIED = 0;
+  HANDLER_EXECUTION_STATE_STARTED = 1;
+  HANDLER_EXECUTION_STATE_RUNNING = 2;
+  HANDLER_EXECUTION_STATE_SUCCESS = 3;
+  HANDLER_EXECUTION_STATE_FAILED = 4;
+  HANDLER_EXECUTION_STATE_CANCELLED = 5;
+}
+message ExecutionReport {
+  string execution_id = 1;
+  uint32 sequence = 2;
+  HandlerExecutionState state = 3;
+  google.protobuf.Timestamp occurred_at = 4;
+  string error_message = 5;
+  string session_id = 6;
+}
+message ExecutionReportAcknowledged {
+  string execution_id = 1;
+  uint32 sequence = 2;
+}
