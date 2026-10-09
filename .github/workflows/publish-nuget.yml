@@ -3,18 +3,38 @@ name: Publish NuGet package
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
 
 permissions:
   contents: read
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.tag.outputs.package_version }}
+    steps:
+      - name: Validate version tag
+        id: tag
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Expected a tag such as v1.2.3" >&2
+            exit 1
+          fi
+          echo "package_version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
   validate:
+    needs: version
     uses: ./.github/workflows/dotnet-ci.yml
+    permissions:
+      contents: read
 
   publish:
-    needs: validate
+    needs: [version, validate]
     runs-on: ubuntu-latest
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
     permissions:
       contents: read
       id-token: write
@@ -27,36 +47,29 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Get package version from tag
-        shell: bash
-        run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Expected a version tag such as v1.2.3 or v1.2.3-rc.1" >&2
-            exit 1
-          fi
-          echo "PACKAGE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-
       - name: Restore
         run: dotnet restore dotnet/SyncCronA.Contracts/SyncCronA.Contracts.csproj
 
       - name: Pack
-        run: dotnet pack dotnet/SyncCronA.Contracts/SyncCronA.Contracts.csproj --configuration Release --no-restore --output artifacts -p:Version="$PACKAGE_VERSION"
+        run: |
+          dotnet pack dotnet/SyncCronA.Contracts/SyncCronA.Contracts.csproj \
+            --configuration Release \
+            --no-restore \
+            --output artifacts \
+            -p:Version="$PACKAGE_VERSION" \
+            -p:ContinuousIntegrationBuild=true
 
-      - name: Check NuGet account configuration
-        env:
-          NUGET_USER: ${{ vars.NUGET_USER }}
-        run: test -n "$NUGET_USER" || { echo "Set the NUGET_USER repository variable to your NuGet.org account name" >&2; exit 1; }
-
-      - name: Log in to NuGet.org with OIDC
-        id: nuget_login
+      - name: NuGet login
+        id: login
         uses: NuGet/login@v1
         with:
           user: ${{ vars.NUGET_USER }}
 
       - name: Publish to NuGet.org
         env:
-          NUGET_API_KEY: ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
           dotnet nuget push "artifacts/SyncCronA.Contracts.$PACKAGE_VERSION.nupkg" \
             --api-key "$NUGET_API_KEY" \
-            --source https://api.nuget.org/v3/index.json
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
