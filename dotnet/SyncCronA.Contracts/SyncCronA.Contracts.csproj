@@ -7,9 +7,14 @@
         <PackageId>SyncCronA.Contracts</PackageId>
         <Authors>Rinker-Informatik</Authors>
         <Description>Shared contracts and gRPC definitions for SyncCronA.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryUrl>https://github.com/Rinker-Informatik/SyncCronA.Contracts</RepositoryUrl>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="/" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Google.Protobuf" Version="3.28.0" />
